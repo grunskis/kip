@@ -37,7 +37,7 @@ import sys
 import random
 import string                                           # pylint: disable=W0402
 import subprocess
-import glob
+import fnmatch
 import argparse
 import getpass
 
@@ -131,16 +131,29 @@ def cmd_add(args):
     return create(args.filepart, args.username, args.notes, pwd=pwd)
 
 
+def find_files(name=None):
+    files = []
+
+    for root, dirnames, filenames in os.walk(HOME_PWD):
+        for filename in filenames:
+            if filename.startswith('.'):
+                continue
+
+            path = os.path.join(root, filename)
+            relpath = os.path.relpath(path, HOME_PWD)
+            if not name or name in relpath:
+                files.append(relpath)
+
+    return files
+
+
 def cmd_list(args):
     """List stored accounts"""
 
-    glob_filter = args.filepart or "*"
-    glob_path = '{}/{}'.format(HOME_PWD, glob_filter)
-    print("Listing {}:".format(bold(glob_path)))
+    path = '{}/{}'.format(HOME_PWD, args.filepart or "*")
+    print("Listing {}:".format(bold(path)))
 
-    files = []
-    for filename in glob.glob(glob_path):
-        files.append(os.path.basename(filename))
+    files = find_files(args.filepart)
 
     files.sort()
     print('\n'.join(files))
@@ -348,8 +361,8 @@ def find(name):
     filename = os.path.join(HOME_PWD, name)
     if not os.path.exists(filename):
         filename = guess(name)
-        basename = os.path.basename(filename)
-        print('Guessing {}'.format(bold(basename)))
+        print('Guessing {}'.format(bold(filename)))
+        filename = os.path.join(HOME_PWD, filename)
 
     return filename
 
@@ -378,8 +391,9 @@ def extract(filename):
 
 def guess(name):
     """Guess filename from part of name"""
+
     res = None
-    globs = glob.glob('{}/*{}*'.format(HOME_PWD, name))
+    globs = find_files(name)
     if len(globs) == 1:
         res = globs[0]
         return res
