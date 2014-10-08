@@ -304,13 +304,18 @@ def decrypt(contents):
 
 def execute(cmd, data_in):
     """Execute 'cmd' on 'stdin' returning 'stdout'"""
-    proc = subprocess.Popen(
-        cmd.split(),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE)
-    if data_in:
-        proc.stdin.write(data_in.encode("utf8"))
-    return proc.communicate()[0].decode("utf8")
+
+    with open(os.devnull, 'w') as devnull:
+        proc = subprocess.Popen(
+            cmd.split(),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=devnull)
+
+        if data_in:
+            proc.stdin.write(data_in.encode("utf8"))
+
+        return proc.communicate()[0].decode("utf8")
 
 
 def show(name, is_visible=False):
