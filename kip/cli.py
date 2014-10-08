@@ -418,111 +418,12 @@ def bold(msg):
     return "\033[1m{msg}\033[0m".format(msg=msg)
 
 
-def cmd_import_from_chrome():
-    """Import keys stored in Gnome Keyring by Chrome.
-
-    Depends on gnomekeyring (python lib) which unfortunately is Python2 only,
-    so run: python cli.py --import-chrome
-
-    Note that this does NOT import the keys created by export_to_gnome_keyring,
-    below. This imports what Chrome stores, the export method below
-    pushes kip keys into keyring.
-    """
-    import gnomekeyring as gk
-    import glib
-
-    def clean_domain(domain):
-        return domain.replace('http://', '').replace('https://', '').strip('/')
-
-    glib.set_application_name('kip')
-
-    ids = gk.list_item_ids_sync('login')
-    for id in ids:
-
-        attrs = gk.item_get_attributes_sync('login', id)
-        domain = clean_domain(attrs['signon_realm'])
-        username = attrs['username_value']
-
-        info = gk.item_get_info_sync('login', id)
-        pwd = info.get_secret()
-
-        msg = "Import %s (%s)? [y|N]" % (domain, username)
-        try:
-            choice = raw_input(msg)
-        except NameError:
-            # python 3
-            choice = input(msg)
-
-        if choice.lower() != 'y':
-            print('Skipping')
-            continue
-
-        create(domain, username, pwd=pwd)
-
-
-def cmd_export_to_gnome_keyring():
-    """Write out accounts to Gnome Keyring. Only useful for 'backup',
-    if you have keyring tools. There is currently no way to import
-    these keys back into kip.
-
-    Requires python2 and gnomekeyring lib.
-
-    Note that this does NOT make the passwords usable to Chrome - this is
-    not a counterpart to import_chrome_gnome_keyring.
-    """
-
-    import time
-    import gnomekeyring as gk
-    import glib
-
-    glib.set_application_name('kip')
-
-    keyrings = gk.list_keyring_names_sync()
-    if not 'kip' in keyrings:
-        gk.create_sync('kip', None)     # None means prompt user for password
-
-    for filename in glob.glob('{}/*'.format(HOME_PWD)):
-
-        user, pwd, notes = extract(filename)
-        domain = os.path.basename(filename)
-
-        print("Exporting {} ({})".format(domain, user))
-        """
-        msg = "Export %s (%s)? [y|N]" % (domain, user)
-        try:
-            choice = raw_input(msg)
-        except NameError:
-            # python 3
-            choice = input(msg)
-
-        if choice.lower() != 'y':
-            print('Skipping')
-            continue
-        """
-
-        attributes = {
-            "username": user.encode("utf8"),
-            "notes": notes.encode("utf8"),
-            "date_created": str(int(time.time())),
-        }
-
-        gk.item_create_sync('kip',
-                            gk.ITEM_GENERIC_SECRET,
-                            domain,
-                            attributes,
-                            pwd.encode("utf8"),
-                            True)
-
-
 CMDS = {
     "get": cmd_get,
     "add": cmd_add,
     "list": cmd_list,
     "edit": cmd_edit,
     "del": cmd_del,
-
-    "import_from_chrome": cmd_import_from_chrome,
-    "export_to_gnome_keyring": cmd_export_to_gnome_keyring,
 }
 
 
